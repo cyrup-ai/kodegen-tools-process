@@ -1,0 +1,60 @@
+[package]
+name = "kodegen_tools_process"
+version = "0.1.0"
+edition = "2024"
+description = "KODEGEN.ᴀɪ: Memory-efficient, Blazing-Fast, MCP tools for code generation agents."
+authors = ["KODEGEN.ᴀɪ"]
+homepage = "https://kodegen.ai"
+repository = "https://github.com/cyrup-ai/kodegen-tools-process"
+readme = "README.md"
+categories = ["development-tools", "command-line-utilities", "api-bindings"]
+keywords = [
+    "mcp",
+    "terminal",
+    "agent",
+    "filesystem",
+    "claude"
+]
+license = "Apache-2.0 OR MIT"
+
+[dependencies]
+kodegen_mcp_tool = { version = "0.1" }
+kodegen_mcp_schema = { version = "0.1" }
+kodegen_tools_config = { version = "0.1" }
+kodegen_utils = { version = "0.1" }
+
+# SSE server core - for binary
+kodegen_server_http = { version = "0.1" }
+
+# MCP SDK - for Tool implementation
+rmcp = { version = "0.8", features = ["client", "schemars", "server"]}
+
+# Async runtime - for async execute methods
+tokio = { version = "1", features = ["full"] }
+
+# Serialization - for Args and responses
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Schema generation - for JsonSchema derive
+schemars = "1"
+
+# Process management - CORE REQUIREMENT for listing and killing processes
+sysinfo = "0.37"
+
+# Error handling - for error conversion with McpError::Other
+anyhow = "1"
+
+[dev-dependencies]
+kodegen_mcp_client = { version = "0.1"  }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+[lib]
+name = "kodegen_tools_process"
+path = "src/lib.rs"
+
+[[bin]]
+name = "kodegen-process"
+path = "src/main.rs"
