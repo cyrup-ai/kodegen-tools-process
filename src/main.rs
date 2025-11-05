@@ -9,6 +9,7 @@ use rmcp::handler::server::router::{prompt::PromptRouter, tool::ToolRouter};
 #[tokio::main]
 async fn main() -> Result<()> {
     run_http_server("process", |_config, _tracker| {
+        Box::pin(async move {
         let tool_router = ToolRouter::new();
         let prompt_router = PromptRouter::new();
         let managers = Managers::new();
@@ -27,6 +28,7 @@ async fn main() -> Result<()> {
         );
 
         Ok(RouterSet::new(tool_router, prompt_router, managers))
+        })
     })
     .await
 }
