@@ -1,6 +1,6 @@
 [package]
 name = "kodegen_tools_process"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "KODEGEN.ᴀɪ: Memory-efficient, Blazing-Fast, MCP tools for code generation agents."
 authors = ["KODEGEN.ᴀɪ"]
@@ -55,6 +55,12 @@ sysinfo = "0.37"
 
 # Error handling - for error conversion with McpError::Other
 anyhow = "1"
+
+# Logging - needed for start_server()
+env_logger = "0.11"
+
+# Time utilities - needed for start_server() instance_id
+chrono = { version = "0.4", features = ["serde"] }
 
 [dev-dependencies]
 kodegen_mcp_client = { version = "0.1"  }
