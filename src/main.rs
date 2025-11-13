@@ -18,13 +18,13 @@ async fn main() -> Result<()> {
         let (tool_router, prompt_router) = register_tool(
             tool_router,
             prompt_router,
-            kodegen_tools_process::ListProcessesTool::new(),
+            kodegen_tools_process::ProcessListTool::new(),
         );
 
         let (tool_router, prompt_router) = register_tool(
             tool_router,
             prompt_router,
-            kodegen_tools_process::KillProcessTool::new(),
+            kodegen_tools_process::ProcessKillTool::new(),
         );
 
         Ok(RouterSet::new(tool_router, prompt_router, managers))

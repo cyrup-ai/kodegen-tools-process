@@ -4,11 +4,11 @@
 /// consistent PID handling across all process-related tools.
 pub type ProcessId = u32;
 
-pub mod list_processes;
-pub use list_processes::*;
+pub mod process_list;
+pub use process_list::*;
 
-pub mod kill_process;
-pub use kill_process::*;
+pub mod process_kill;
+pub use process_kill::*;
 
 /// Start the process tools HTTP server programmatically
 ///
@@ -37,8 +37,9 @@ pub async fn start_server(
     };
 
     let shutdown_timeout = Duration::from_secs(30);
+    let session_keep_alive = Duration::from_secs(300);
 
-    create_http_server("process", addr, tls_config, shutdown_timeout, |_config, _tracker| {
+    create_http_server("process", addr, tls_config, shutdown_timeout, session_keep_alive, |_config, _tracker| {
         Box::pin(async move {
             let tool_router = ToolRouter::new();
             let prompt_router = PromptRouter::new();
@@ -48,13 +49,13 @@ pub async fn start_server(
             let (tool_router, prompt_router) = register_tool(
                 tool_router,
                 prompt_router,
-                crate::ListProcessesTool::new(),
+                crate::ProcessListTool::new(),
             );
 
             let (tool_router, prompt_router) = register_tool(
                 tool_router,
                 prompt_router,
-                crate::KillProcessTool::new(),
+                crate::ProcessKillTool::new(),
             );
 
             Ok(RouterSet::new(tool_router, prompt_router, managers))

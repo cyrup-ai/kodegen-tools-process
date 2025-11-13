@@ -18,7 +18,7 @@ Part of the [KODEGEN.ᴀɪ](https://kodegen.ai) ecosystem.
 
 ## Tools
 
-### `list_processes`
+### `process_list`
 
 List all running processes with detailed metrics:
 
@@ -37,7 +37,7 @@ Returns:
 
 Results are sorted by CPU usage (highest first).
 
-### `kill_process`
+### `process_kill`
 
 Terminate a process by PID:
 
@@ -99,18 +99,18 @@ async fn main() -> anyhow::Result<()> {
     let (client, conn) = create_streamable_client("http://127.0.0.1:30447/mcp").await?;
 
     // List all processes
-    let result = client.call_tool(tools::LIST_PROCESSES, json!({})).await?;
+    let result = client.call_tool(tools::PROCESS_LIST, json!({})).await?;
     println!("Processes: {:?}", result);
 
     // List filtered processes
     let result = client.call_tool(
-        tools::LIST_PROCESSES,
+        tools::PROCESS_LIST,
         json!({"filter": "rust", "limit": 5})
     ).await?;
 
     // Kill a process (use with caution!)
     let result = client.call_tool(
-        tools::KILL_PROCESS,
+        tools::PROCESS_KILL,
         json!({"pid": 12345})
     ).await?;
 
@@ -141,7 +141,7 @@ The example demonstrates:
 cargo test
 
 # Run specific test
-cargo test list_processes
+cargo test process_list
 ```
 
 ### Code Quality

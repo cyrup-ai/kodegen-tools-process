@@ -1,10 +1,10 @@
 use kodegen_mcp_tool::Tool;
 use kodegen_mcp_tool::error::McpError;
-use kodegen_mcp_schema::process::{ListProcessesArgs, ListProcessesPromptArgs};
-use rmcp::model::{PromptArgument, PromptMessage, PromptMessageContent, PromptMessageRole};
+use kodegen_mcp_schema::process::{ProcessListArgs, ProcessListPromptArgs};
+use rmcp::model::{Content, PromptArgument, PromptMessage, PromptMessageContent, PromptMessageRole};
 use schemars::JsonSchema;
 use serde::Serialize;
-use serde_json::{Value, json};
+use serde_json::json;
 use sysinfo::System;
 
 use crate::ProcessId;
@@ -33,9 +33,9 @@ pub struct ProcessInfo {
 // ============================================================================
 
 #[derive(Clone, Default)]
-pub struct ListProcessesTool;
+pub struct ProcessListTool;
 
-impl ListProcessesTool {
+impl ProcessListTool {
     #[must_use]
     pub fn new() -> Self {
         Self
@@ -46,12 +46,12 @@ impl ListProcessesTool {
 // TOOL IMPLEMENTATION
 // ============================================================================
 
-impl Tool for ListProcessesTool {
-    type Args = ListProcessesArgs;
-    type PromptArgs = ListProcessesPromptArgs;
+impl Tool for ProcessListTool {
+    type Args = ProcessListArgs;
+    type PromptArgs = ProcessListPromptArgs;
 
     fn name() -> &'static str {
-        "list_processes"
+        "process_list"
     }
 
     fn description() -> &'static str {
@@ -64,7 +64,7 @@ impl Tool for ListProcessesTool {
         true
     }
 
-    async fn execute(&self, args: Self::Args) -> Result<Value, McpError> {
+    async fn execute(&self, args: Self::Args) -> Result<Vec<Content>, McpError> {
         // Clone filter before moving args into closure
         let filter_clone = args.filter.clone();
         let limit = args.limit;
@@ -113,12 +113,76 @@ impl Tool for ListProcessesTool {
         .await
         .map_err(|e| McpError::Other(anyhow::anyhow!("Failed to list processes: {e}")))?;
 
-        Ok(json!({
+        let mut contents = Vec::new();
+
+        // Human-readable summary
+        let filter_text = filter_clone
+            .as_ref()
+            .map(|f| format!(" matching \"{}\"", f))
+            .unwrap_or_default();
+            
+        let limited_text = if limit > 0 && processes.len() >= limit {
+            format!(" (limited to top {})", limit)
+        } else {
+            String::new()
+        };
+
+        let summary = if processes.is_empty() {
+            format!(
+                "🔍 Process List\n\
+                 \n\
+                 No processes found{}.\n\
+                 \n\
+                 Tip: Try a different filter or check if the process is running.",
+                filter_text
+            )
+        } else {
+            let mut table = format!(
+                "🔍 Process List{}{}\n\
+                 \n\
+                 Found {} process{}:\n\
+                 \n\
+                 {:>8}  {:>8}  {:>10}  {}\n\
+                 {}\n",
+                filter_text,
+                limited_text,
+                processes.len(),
+                if processes.len() == 1 { "" } else { "es" },
+                "PID", "CPU%", "Memory MB", "Name",
+                "-".repeat(60)
+            );
+            
+            for proc in &processes {
+                table.push_str(&format!(
+                    "{:>8}  {:>7.1}%  {:>10.1}  {}\n",
+                    proc.pid, proc.cpu_percent, proc.memory_mb, proc.name
+                ));
+            }
+            
+            table.push_str(&format!(
+                "\n\
+                 Total: {} processes\n\
+                 Sorted by CPU usage (highest first)",
+                processes.len()
+            ));
+            
+            table
+        };
+
+        contents.push(Content::text(summary));
+
+        // JSON metadata
+        let metadata = json!({
             "processes": processes,
             "total_count": processes.len(),
             "filter": filter_clone,
             "limited": limit > 0 && processes.len() >= limit
-        }))
+        });
+        let json_str = serde_json::to_string_pretty(&metadata)
+            .unwrap_or_else(|_| "{}".to_string());
+        contents.push(Content::text(json_str));
+
+        Ok(contents)
     }
 
     fn prompt_arguments() -> Vec<PromptArgument> {
@@ -134,13 +198,13 @@ impl Tool for ListProcessesTool {
             PromptMessage {
                 role: PromptMessageRole::Assistant,
                 content: PromptMessageContent::text(
-                    "The list_processes tool shows all running processes:\n\n\
+                    "The process_list tool shows all running processes:\n\n\
                      1. List all processes:\n\
-                        list_processes({})\n\n\
+                        process_list({})\n\n\
                      2. Filter by name:\n\
-                        list_processes({\"filter\": \"python\"})\n\n\
+                        process_list({\"filter\": \"python\"})\n\n\
                      3. Limit results:\n\
-                        list_processes({\"filter\": \"node\", \"limit\": 10})\n\n\
+                        process_list({\"filter\": \"node\", \"limit\": 10})\n\n\
                      Returns for each process:\n\
                      - pid: Process ID\n\
                      - name: Process/command name\n\

@@ -5,7 +5,7 @@ use kodegen_mcp_client::tools;
 use serde_json::json;
 use tracing::{error, info};
 
-// Response structures for list_processes tool
+// Response structures for process_list tool
 #[derive(Debug, serde::Deserialize)]
 struct ProcessInfo {
     pid: u32,
@@ -43,9 +43,9 @@ async fn main() -> anyhow::Result<()> {
 
     info!("Connected to server: {:?}", client.server_info());
 
-    // 1. LIST_PROCESSES - List all running processes
-    info!("1. Testing list_processes");
-    match client.call_tool(tools::LIST_PROCESSES, json!({})).await {
+    // 1. PROCESS_LIST - List all running processes
+    info!("1. Testing process_list");
+    match client.call_tool(tools::PROCESS_LIST, json!({})).await {
         Ok(result) => {
             // Extract text content from CallToolResult
             if let Some(text_content) = result.content.first().and_then(|c| c.as_text()) {
@@ -87,18 +87,18 @@ async fn main() -> anyhow::Result<()> {
                 Err(e) => error!("Failed to parse process list: {}", e),
             }
             } else {
-                error!("No text content in response from list_processes tool");
+                error!("No text content in response from process_list tool");
             }
         }
         Err(e) => error!("Failed to list processes: {}", e),
     }
 
-    // 2. KILL_PROCESS - Kill a process (demonstration only - not actually killing)
-    info!("2. Testing kill_process (demo with invalid PID)");
+    // 2. PROCESS_KILL - Kill a process (demonstration only - not actually killing)
+    info!("2. Testing process_kill (demo with invalid PID)");
     // Note: Using an invalid PID to demonstrate without actually killing anything
     match client
         .call_tool(
-            tools::KILL_PROCESS,
+            tools::PROCESS_KILL,
             json!({ "pid": 999999 }), // Invalid PID for demo
         )
         .await

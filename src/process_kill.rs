@@ -1,23 +1,23 @@
 use kodegen_mcp_tool::Tool;
 use kodegen_mcp_tool::error::McpError;
-use kodegen_mcp_schema::process::{KillProcessArgs, KillProcessPromptArgs};
-use rmcp::model::{PromptArgument, PromptMessage, PromptMessageContent, PromptMessageRole};
-use serde_json::{Value, json};
+use kodegen_mcp_schema::process::{ProcessKillArgs, ProcessKillPromptArgs};
+use rmcp::model::{Content, PromptArgument, PromptMessage, PromptMessageContent, PromptMessageRole};
+use serde_json::json;
 use sysinfo::{Pid, ProcessesToUpdate, Signal, System};
 
 // Compile-time platform validation for PID conversion safety
 // This ensures u32 → usize conversion cannot truncate
 #[cfg(not(any(target_pointer_width = "32", target_pointer_width = "64")))]
-compile_error!("KillProcessTool only supports 32-bit and 64-bit platforms");
+compile_error!("ProcessKillTool only supports 32-bit and 64-bit platforms");
 
 // ============================================================================
 // TOOL STRUCT
 // ============================================================================
 
 #[derive(Clone, Default)]
-pub struct KillProcessTool;
+pub struct ProcessKillTool;
 
-impl KillProcessTool {
+impl ProcessKillTool {
     #[must_use]
     pub fn new() -> Self {
         Self
@@ -28,12 +28,12 @@ impl KillProcessTool {
 // TOOL IMPLEMENTATION
 // ============================================================================
 
-impl Tool for KillProcessTool {
-    type Args = KillProcessArgs;
-    type PromptArgs = KillProcessPromptArgs;
+impl Tool for ProcessKillTool {
+    type Args = ProcessKillArgs;
+    type PromptArgs = ProcessKillPromptArgs;
 
     fn name() -> &'static str {
-        "kill_process"
+        "process_kill"
     }
 
     fn description() -> &'static str {
@@ -54,7 +54,7 @@ impl Tool for KillProcessTool {
         false // Killing twice will fail (process no longer exists)
     }
 
-    async fn execute(&self, args: Self::Args) -> Result<Value, McpError> {
+    async fn execute(&self, args: Self::Args) -> Result<Vec<Content>, McpError> {
         let pid = args.pid;
 
         // Validate PID
@@ -101,12 +101,36 @@ impl Tool for KillProcessTool {
         .map_err(|e| McpError::Other(anyhow::anyhow!("Failed to kill process: {e}")))?;
 
         match result {
-            Ok(process_name) => Ok(json!({
-                "success": true,
-                "pid": pid,
-                "process_name": process_name,
-                "message": format!("Successfully terminated process {pid} ({process_name})")
-            })),
+            Ok(process_name) => {
+                let mut contents = Vec::new();
+
+                // Human-readable summary
+                let summary = format!(
+                    "✅ Process Terminated\n\
+                     \n\
+                     PID: {}\n\
+                     Process: {}\n\
+                     Signal: SIGKILL (forced termination)\n\
+                     \n\
+                     ⚠️  The process was forcefully killed and could not perform cleanup.",
+                    pid, process_name
+                );
+                contents.push(Content::text(summary));
+
+                // JSON metadata
+                let metadata = json!({
+                    "success": true,
+                    "pid": pid,
+                    "process_name": process_name,
+                    "signal": "SIGKILL",
+                    "message": format!("Successfully terminated process {} ({})", pid, process_name)
+                });
+                let json_str = serde_json::to_string_pretty(&metadata)
+                    .unwrap_or_else(|_| "{}".to_string());
+                contents.push(Content::text(json_str));
+
+                Ok(contents)
+            }
             Err(reason) => Err(McpError::PermissionDenied(format!(
                 "Failed to kill process {pid}: {reason}"
             ))),
@@ -126,15 +150,15 @@ impl Tool for KillProcessTool {
             PromptMessage {
                 role: PromptMessageRole::Assistant,
                 content: PromptMessageContent::text(
-                    "The kill_process tool terminates a process by PID:\n\n\
-                     Usage: kill_process({\"pid\": 12345})\n\n\
+                    "The process_kill tool terminates a process by PID:\n\n\
+                     Usage: process_kill({\"pid\": 12345})\n\n\
                      ⚠️  IMPORTANT - This is DESTRUCTIVE:\n\
                      - Sends SIGKILL (force kill, immediate termination)\n\
                      - Process cannot cleanup or save state\n\
                      - No graceful shutdown\n\
                      - Use with caution!\n\n\
                      Before killing:\n\
-                     1. Use list_processes to find the PID\n\
+                     1. Use process_list to find the PID\n\
                      2. Verify it's the correct process\n\
                      3. Consider if force kill is necessary\n\n\
                      Error cases:\n\
