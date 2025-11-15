@@ -1,6 +1,6 @@
 use kodegen_mcp_tool::Tool;
 use kodegen_mcp_tool::error::McpError;
-use kodegen_mcp_schema::process::{ProcessListArgs, ProcessListPromptArgs};
+use kodegen_mcp_schema::process::{ProcessListArgs, ProcessListPromptArgs, PROCESS_LIST};
 use rmcp::model::{Content, PromptArgument, PromptMessage, PromptMessageContent, PromptMessageRole};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -51,7 +51,7 @@ impl Tool for ProcessListTool {
     type PromptArgs = ProcessListPromptArgs;
 
     fn name() -> &'static str {
-        "process_list"
+        PROCESS_LIST
     }
 
     fn description() -> &'static str {

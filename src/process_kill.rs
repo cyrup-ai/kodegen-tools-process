@@ -1,6 +1,6 @@
 use kodegen_mcp_tool::Tool;
 use kodegen_mcp_tool::error::McpError;
-use kodegen_mcp_schema::process::{ProcessKillArgs, ProcessKillPromptArgs};
+use kodegen_mcp_schema::process::{ProcessKillArgs, ProcessKillPromptArgs, PROCESS_KILL};
 use rmcp::model::{Content, PromptArgument, PromptMessage, PromptMessageContent, PromptMessageRole};
 use serde_json::json;
 use sysinfo::{Pid, ProcessesToUpdate, Signal, System};
@@ -33,7 +33,7 @@ impl Tool for ProcessKillTool {
     type PromptArgs = ProcessKillPromptArgs;
 
     fn name() -> &'static str {
-        "process_kill"
+        PROCESS_KILL
     }
 
     fn description() -> &'static str {

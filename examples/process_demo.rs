@@ -1,7 +1,7 @@
 mod common;
 
 use anyhow::Context;
-use kodegen_mcp_client::tools;
+use kodegen_mcp_schema::process::*;
 use serde_json::json;
 use tracing::{error, info};
 
@@ -45,7 +45,7 @@ async fn main() -> anyhow::Result<()> {
 
     // 1. PROCESS_LIST - List all running processes
     info!("1. Testing process_list");
-    match client.call_tool(tools::PROCESS_LIST, json!({})).await {
+    match client.call_tool(PROCESS_LIST, json!({})).await {
         Ok(result) => {
             // Extract text content from CallToolResult
             if let Some(text_content) = result.content.first().and_then(|c| c.as_text()) {
@@ -53,17 +53,17 @@ async fn main() -> anyhow::Result<()> {
                 match serde_json::from_str::<ProcessListResult>(&text_content.text) {
                 Ok(list) => {
                     info!("✅ Found {} processes", list.total_count);
-                    
+
                     if list.limited {
                         info!("   (Results limited - showing top processes by CPU usage)");
                     }
-                    
+
                     if let Some(ref filter) = list.filter {
                         info!("   (Filtered by: {})", filter);
                     }
-                    
+
                     info!("   Top {} processes by CPU usage:", list.processes.len().min(10));
-                    
+
                     // Show top 10 processes in formatted table
                     for (i, proc) in list.processes.iter().take(10).enumerate() {
                         // Truncate process name to 20 characters (UTF-8 safe)
@@ -98,7 +98,7 @@ async fn main() -> anyhow::Result<()> {
     // Note: Using an invalid PID to demonstrate without actually killing anything
     match client
         .call_tool(
-            tools::PROCESS_KILL,
+            PROCESS_KILL,
             json!({ "pid": 999999 }), // Invalid PID for demo
         )
         .await
