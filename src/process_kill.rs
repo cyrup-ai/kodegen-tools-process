@@ -104,16 +104,11 @@ impl Tool for ProcessKillTool {
             Ok(process_name) => {
                 let mut contents = Vec::new();
 
-                // Human-readable summary
+                // Human-readable summary with ANSI red color and Nerd Font icons
                 let summary = format!(
-                    "✅ Process Terminated\n\
-                     \n\
-                     PID: {}\n\
-                     Process: {}\n\
-                     Signal: SIGKILL (forced termination)\n\
-                     \n\
-                     ⚠️  The process was forcefully killed and could not perform cleanup.",
-                    pid, process_name
+                    "\x1b[31m Process Killed: PID {}\x1b[0m\n\
+                      Signal: SIGKILL · Status: terminated",
+                    pid
                 );
                 contents.push(Content::text(summary));
 

@@ -70,7 +70,7 @@ impl Tool for ProcessListTool {
         let limit = args.limit;
 
         // Use spawn_blocking because sysinfo operations are CPU-intensive
-        let processes = tokio::task::spawn_blocking(move || {
+        let (total_count, processes) = tokio::task::spawn_blocking(move || {
             let mut system = System::new_all();
             system.refresh_all();
 
@@ -90,6 +90,9 @@ impl Tool for ProcessListTool {
                 })
                 .collect();
 
+            // Capture total count before filtering
+            let total_before_filter = process_list.len();
+
             // Apply filter if provided
             if let Some(filter) = &args.filter {
                 let filter_lower = filter.to_lowercase();
@@ -108,73 +111,35 @@ impl Tool for ProcessListTool {
                 process_list.truncate(args.limit);
             }
 
-            process_list
+            (total_before_filter, process_list)
         })
         .await
         .map_err(|e| McpError::Other(anyhow::anyhow!("Failed to list processes: {e}")))?;
 
         let mut contents = Vec::new();
 
-        // Human-readable summary
-        let filter_text = filter_clone
-            .as_ref()
-            .map(|f| format!(" matching \"{}\"", f))
-            .unwrap_or_default();
-            
-        let limited_text = if limit > 0 && processes.len() >= limit {
-            format!(" (limited to top {})", limit)
-        } else {
-            String::new()
-        };
+        // ========================================
+        // Content[0]: Human-Readable Summary
+        // ========================================
+        let filtered_count = processes.len();
+        let filter_text = filter_clone.as_deref().unwrap_or("none");
 
-        let summary = if processes.is_empty() {
-            format!(
-                "🔍 Process List\n\
-                 \n\
-                 No processes found{}.\n\
-                 \n\
-                 Tip: Try a different filter or check if the process is running.",
-                filter_text
-            )
-        } else {
-            let mut table = format!(
-                "🔍 Process List{}{}\n\
-                 \n\
-                 Found {} process{}:\n\
-                 \n\
-                 {:>8}  {:>8}  {:>10}  {}\n\
-                 {}\n",
-                filter_text,
-                limited_text,
-                processes.len(),
-                if processes.len() == 1 { "" } else { "es" },
-                "PID", "CPU%", "Memory MB", "Name",
-                "-".repeat(60)
-            );
-            
-            for proc in &processes {
-                table.push_str(&format!(
-                    "{:>8}  {:>7.1}%  {:>10.1}  {}\n",
-                    proc.pid, proc.cpu_percent, proc.memory_mb, proc.name
-                ));
-            }
-            
-            table.push_str(&format!(
-                "\n\
-                 Total: {} processes\n\
-                 Sorted by CPU usage (highest first)",
-                processes.len()
-            ));
-            
-            table
-        };
+        let summary = format!(
+            "\x1b[36m󰒓 Processes\x1b[0m\n 󰋽 Total: {} · Filtered: {} · Filter: {}",
+            total_count,
+            filtered_count,
+            filter_text
+        );
 
         contents.push(Content::text(summary));
 
-        // JSON metadata
+        // ========================================
+        // Content[1]: Machine-Parseable JSON
+        // ========================================
         let metadata = json!({
             "processes": processes,
-            "total_count": processes.len(),
+            "total_count": total_count,
+            "filtered_count": filtered_count,
             "filter": filter_clone,
             "limited": limit > 0 && processes.len() >= limit
         });
