@@ -1,4 +1,4 @@
-use kodegen_mcp_tool::Tool;
+use kodegen_mcp_tool::{Tool, ToolExecutionContext};
 use kodegen_mcp_tool::error::McpError;
 use kodegen_mcp_schema::process::{ProcessListArgs, ProcessListPromptArgs, PROCESS_LIST};
 use rmcp::model::{Content, PromptArgument, PromptMessage, PromptMessageContent, PromptMessageRole};
@@ -64,7 +64,7 @@ impl Tool for ProcessListTool {
         true
     }
 
-    async fn execute(&self, args: Self::Args) -> Result<Vec<Content>, McpError> {
+    async fn execute(&self, args: Self::Args, _ctx: ToolExecutionContext) -> Result<Vec<Content>, McpError> {
         // Clone filter before moving args into closure
         let filter_clone = args.filter.clone();
         let limit = args.limit;

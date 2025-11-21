@@ -1,4 +1,4 @@
-use kodegen_mcp_tool::Tool;
+use kodegen_mcp_tool::{Tool, ToolExecutionContext};
 use kodegen_mcp_tool::error::McpError;
 use kodegen_mcp_schema::process::{ProcessKillArgs, ProcessKillPromptArgs, PROCESS_KILL};
 use rmcp::model::{Content, PromptArgument, PromptMessage, PromptMessageContent, PromptMessageRole};
@@ -54,7 +54,7 @@ impl Tool for ProcessKillTool {
         false // Killing twice will fail (process no longer exists)
     }
 
-    async fn execute(&self, args: Self::Args) -> Result<Vec<Content>, McpError> {
+    async fn execute(&self, args: Self::Args, _ctx: ToolExecutionContext) -> Result<Vec<Content>, McpError> {
         let pid = args.pid;
 
         // Validate PID
