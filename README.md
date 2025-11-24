@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="assets/img/banner.png" alt="Kodegen AI Banner" width="100%" />
+</div>
+
 # kodegen-tools-process
 
 [![License](https://img.shields.io/badge/license-Apache%202.0%20OR%20MIT-blue.svg)](LICENSE.md)
@@ -95,8 +99,9 @@ use serde_json::json;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Connect to server
-    let (client, conn) = create_streamable_client("http://127.0.0.1:30447/mcp").await?;
+    // Connect to server with session headers
+    use reqwest::header::HeaderMap;
+    let (client, conn) = create_streamable_client("http://127.0.0.1:30447/mcp", HeaderMap::new()).await?;
 
     // List all processes
     let result = client.call_tool(tools::PROCESS_LIST, json!({})).await?;
