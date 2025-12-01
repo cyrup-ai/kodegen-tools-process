@@ -11,7 +11,7 @@ Memory-efficient, blazing-fast MCP (Model Context Protocol) tools for process ma
 
 Part of the [KODEGEN.ᴀɪ](https://kodegen.ai) ecosystem.
 
-## Features
+## Features 
 
 - **List Processes**: Query all running processes with CPU usage, memory consumption, and filtering capabilities
 - **Kill Processes**: Safely terminate processes by PID with proper error handling
