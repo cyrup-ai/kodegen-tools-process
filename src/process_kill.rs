@@ -1,8 +1,7 @@
-use kodegen_mcp_tool::{Tool, ToolExecutionContext};
+use kodegen_mcp_tool::{Tool, ToolExecutionContext, ToolResponse};
 use kodegen_mcp_tool::error::McpError;
-use kodegen_mcp_schema::process::{ProcessKillArgs, ProcessKillPromptArgs, PROCESS_KILL};
-use rmcp::model::{Content, PromptArgument, PromptMessage, PromptMessageContent, PromptMessageRole};
-use serde_json::json;
+use kodegen_mcp_schema::process::{ProcessKillArgs, ProcessKillPromptArgs, ProcessKillOutput, PROCESS_KILL};
+use rmcp::model::{PromptArgument, PromptMessage, PromptMessageContent, PromptMessageRole};
 use sysinfo::{Pid, ProcessesToUpdate, Signal, System};
 
 // Compile-time platform validation for PID conversion safety
@@ -54,7 +53,7 @@ impl Tool for ProcessKillTool {
         false // Killing twice will fail (process no longer exists)
     }
 
-    async fn execute(&self, args: Self::Args, _ctx: ToolExecutionContext) -> Result<Vec<Content>, McpError> {
+    async fn execute(&self, args: Self::Args, _ctx: ToolExecutionContext) -> Result<ToolResponse<ProcessKillOutput>, McpError> {
         let pid = args.pid;
 
         // Validate PID
@@ -101,30 +100,22 @@ impl Tool for ProcessKillTool {
         .map_err(|e| McpError::Other(anyhow::anyhow!("Failed to kill process: {e}")))?;
 
         match result {
-            Ok(process_name) => {
-                let mut contents = Vec::new();
-
+            Ok(_process_name) => {
                 // Human-readable summary with ANSI red color and Nerd Font icons
                 let summary = format!(
                     "\x1b[31m Process Killed: PID {}\x1b[0m\n\
                       Signal: SIGKILL · Status: terminated",
                     pid
                 );
-                contents.push(Content::text(summary));
 
-                // JSON metadata
-                let metadata = json!({
-                    "success": true,
-                    "pid": pid,
-                    "process_name": process_name,
-                    "signal": "SIGKILL",
-                    "message": format!("Successfully terminated process {} ({})", pid, process_name)
-                });
-                let json_str = serde_json::to_string_pretty(&metadata)
-                    .unwrap_or_else(|_| "{}".to_string());
-                contents.push(Content::text(json_str));
-
-                Ok(contents)
+                Ok(ToolResponse::new(
+                    summary,
+                    ProcessKillOutput {
+                        success: true,
+                        pid,
+                        message: format!("Successfully terminated process {}", pid),
+                    },
+                ))
             }
             Err(reason) => Err(McpError::PermissionDenied(format!(
                 "Failed to kill process {pid}: {reason}"

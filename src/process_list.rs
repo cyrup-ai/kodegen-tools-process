@@ -1,32 +1,10 @@
-use kodegen_mcp_tool::{Tool, ToolExecutionContext};
+use kodegen_mcp_tool::{Tool, ToolExecutionContext, ToolResponse};
 use kodegen_mcp_tool::error::McpError;
-use kodegen_mcp_schema::process::{ProcessListArgs, ProcessListPromptArgs, PROCESS_LIST};
-use rmcp::model::{Content, PromptArgument, PromptMessage, PromptMessageContent, PromptMessageRole};
-use schemars::JsonSchema;
-use serde::Serialize;
-use serde_json::json;
+use kodegen_mcp_schema::process::{
+    ProcessListArgs, ProcessListPromptArgs, ProcessListOutput, ProcessInfo, PROCESS_LIST
+};
+use rmcp::model::{PromptArgument, PromptMessage, PromptMessageContent, PromptMessageRole};
 use sysinfo::System;
-
-use crate::ProcessId;
-
-// ============================================================================
-// SHARED TYPES
-// ============================================================================
-
-#[derive(Debug, Clone, Serialize, JsonSchema)]
-pub struct ProcessInfo {
-    /// Process ID
-    pub pid: ProcessId,
-
-    /// Process name/command
-    pub name: String,
-
-    /// CPU usage percentage
-    pub cpu_percent: f32,
-
-    /// Memory usage in MB
-    pub memory_mb: f64,
-}
 
 // ============================================================================
 // TOOL STRUCT
@@ -64,13 +42,12 @@ impl Tool for ProcessListTool {
         true
     }
 
-    async fn execute(&self, args: Self::Args, _ctx: ToolExecutionContext) -> Result<Vec<Content>, McpError> {
+    async fn execute(&self, args: Self::Args, _ctx: ToolExecutionContext) -> Result<ToolResponse<ProcessListOutput>, McpError> {
         // Clone filter before moving args into closure
         let filter_clone = args.filter.clone();
-        let limit = args.limit;
 
         // Use spawn_blocking because sysinfo operations are CPU-intensive
-        let (total_count, processes) = tokio::task::spawn_blocking(move || {
+        let processes = tokio::task::spawn_blocking(move || {
             let mut system = System::new_all();
             system.refresh_all();
 
@@ -90,9 +67,6 @@ impl Tool for ProcessListTool {
                 })
                 .collect();
 
-            // Capture total count before filtering
-            let total_before_filter = process_list.len();
-
             // Apply filter if provided
             if let Some(filter) = &args.filter {
                 let filter_lower = filter.to_lowercase();
@@ -111,43 +85,27 @@ impl Tool for ProcessListTool {
                 process_list.truncate(args.limit);
             }
 
-            (total_before_filter, process_list)
+            process_list
         })
         .await
         .map_err(|e| McpError::Other(anyhow::anyhow!("Failed to list processes: {e}")))?;
 
-        let mut contents = Vec::new();
-
-        // ========================================
-        // Content[0]: Human-Readable Summary
-        // ========================================
-        let filtered_count = processes.len();
+        // Human-readable summary
         let filter_text = filter_clone.as_deref().unwrap_or("none");
-
         let summary = format!(
-            "\x1b[36m󰒓 Processes\x1b[0m\n 󰋽 Total: {} · Filtered: {} · Filter: {}",
-            total_count,
-            filtered_count,
+            "\x1b[36m󰒓 Processes\x1b[0m\n 󰋽 Count: {} · Filter: {}",
+            processes.len(),
             filter_text
         );
 
-        contents.push(Content::text(summary));
-
-        // ========================================
-        // Content[1]: Machine-Parseable JSON
-        // ========================================
-        let metadata = json!({
-            "processes": processes,
-            "total_count": total_count,
-            "filtered_count": filtered_count,
-            "filter": filter_clone,
-            "limited": limit > 0 && processes.len() >= limit
-        });
-        let json_str = serde_json::to_string_pretty(&metadata)
-            .unwrap_or_else(|_| "{}".to_string());
-        contents.push(Content::text(json_str));
-
-        Ok(contents)
+        Ok(ToolResponse::new(
+            summary,
+            ProcessListOutput {
+                success: true,
+                count: processes.len(),
+                processes,
+            },
+        ))
     }
 
     fn prompt_arguments() -> Vec<PromptArgument> {
