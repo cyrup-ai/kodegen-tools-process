@@ -92,7 +92,7 @@ impl Tool for ProcessListTool {
         // Human-readable summary
         let filter_text = filter_clone.as_deref().unwrap_or("none");
         let summary = format!(
-            "\x1b[36m󰒓 Processes\x1b[0m\n 󰋽 Count: {} · Filter: {}",
+            "\x1b[36mProcesses\x1b[0m\n• Count: {} · Filter: {}",
             processes.len(),
             filter_text
         );
